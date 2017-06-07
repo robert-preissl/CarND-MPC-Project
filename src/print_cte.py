@@ -3,9 +3,9 @@ from pylab import *
 import numpy as np
 
 #  y(x) = -1.12 + 0.108953 * x
-list_of_files = [ ('../data/mpc_3.txt', 'MPC', 'c.'),
-                  ('../data/next_3.txt', 'Next', 'r.'),
-                  ('../data/coeff_3.txt', 'Coeff', 'g-')]
+list_of_files = [ ('../data/mpc_4.txt', 'MPC', 'c.'),
+                  ('../data/next_4.txt', 'Next', 'r.'),
+                  ('../data/coeff_4.txt', 'Coeff', 'g-')]
 
 # list_of_files = [ ('../data/mpc_cte_1.txt', 'CTE-1000', 'r-'),
 #                   ('../data/mpc_cte_2.txt', 'CTE-50000', 'b-'),
