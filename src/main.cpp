@@ -62,6 +62,8 @@ void CoordTransf2D(const double & x_in,
   double x_t = x_in - origin_x; // - 32 - -40 = 8   or -43 - - 40 = -3
   double y_t = y_in - origin_y; // 113 - 108 = 5    or 105 - 108 = -3
 
+
+
   // 2. Rotation
   // [X'] = [ cos sin] * [X]
   // [Y'] = [-sin cos] * [Y]
@@ -115,14 +117,10 @@ which is different than the car's coordinate system
     // after the coordinate transformation, we move the x coordinate
     //  (in vehicle space) by a certain distance in vehicle direction
     //  to account for latency of sending actuator commands to the simulator
-
-    //x += v_metersPerSec * latency_sec;
-    // TODO
-    printf("\n XX1 -- x = %f / offset = %f \n", x, v_metersPerSec * latency_sec);
-
     next_x_vals.push_back( x ); // -9  or 3.9
     next_y_vals.push_back( y ); // 0.8 or 0.7
   }
+
 }
 
 double convert_milesPerHour_to_MetersPerSec(double milesPH) {
@@ -168,16 +166,20 @@ int main() {
           vector<double> next_y_vals;
 
           // get the ref. path in vehicle space
-          // TODO: v stuff
           get_reference_path(px, py, psi, ptsx, ptsy, next_x_vals, next_y_vals, v_metersPerSec, latency_milliSec);
 
-          // TODO: Implement latency compensation of the controller by predicting the state 100ms into the future before passing it to the solver.
-
-          auto coeffs = polyfit(convert_vec_to_eigen<double>(next_x_vals), convert_vec_to_eigen<double>(next_y_vals), 3); // TODO
+          auto coeffs = polyfit(convert_vec_to_eigen<double>(next_x_vals), convert_vec_to_eigen<double>(next_y_vals), 3); // 3rd order polynomial
 
           double latency_sec = latency_milliSec / 1000.0;
           double x_lat = v_metersPerSec * latency_sec;
-          double cte = polyeval(coeffs, x_lat); // TODO // evaluation done in vehicle space -> hence, we compute CTE to y=0
+
+          // for latency compensation of the controller we make the solver optimize the actuator input for a vehicle position
+          //  "latency_milliSec" (100ms) in the future. The solver works in vehicle space, hence, we update the vehicle's
+          //   x position (i.e., driving direction) to be 100ms in the future.
+          //  This means we evaluate the CTE not at x-position 0; it is evaluated 100ms into the future before being passed to the solver.
+          //  In addition, we pass the latency-updated x position to the state vector. So, the solver gets latency-updated CTE and x positions.
+
+          double cte = polyeval(coeffs, x_lat);
 
 #ifdef _SAVE_CTE_DATA_
           if (!datafile_cte.is_open())
@@ -190,39 +192,10 @@ int main() {
 #endif
 
           // Due to the sign starting at 0, the orientation error is -f'(x).
-          // derivative of coeffs[0] + coeffs[1] * x + coeffs[2] * x ^ 2 + coeffs[3] * x ^ 3   -> coeffs[1]
+          // derivative of 3rd order polynomial: coeffs[0] + coeffs[1] * x + coeffs[2] * x ^ 2 + coeffs[3] * x ^ 3
           double epsi = -atan(coeffs[1] + 2 * x_lat * coeffs[2] + 3 * x_lat * x_lat * coeffs[3]);
 
           Eigen::VectorXd state(6);
-
-// Recall the equations for the model:
-// x_[t+1] = x[t] + v[t] * cos(psi[t]) * dt
-// y_[t+1] = y[t] + v[t] * sin(psi[t]) * dt
-// psi_[t+1] = psi[t] + v[t] / Lf * delta[t] * dt
-// v_[t+1] = v[t] + a[t] * dt
-// cte[t+1] = f(x[t]) - y[t] + v[t] * sin(epsi[t]) * dt
-// epsi[t+1] = psi[t] - psides[t] + v[t] * delta[t] / Lf * dt
-
-// TODO: explain
-
-          double old_steer_value = j[1]["steering_angle"];
-          double old_throttle_value = j[1]["throttle"];
-
-          // y_t = 0 since y_lat = v[t] * sin(psi[t]) * dt   and sin = 0
-
-      /*    double y_lat = 0;
-          double psi_lat = 0;
-          double v_lat = v_metersPerSec;
-          double cte_lat = cte;
-          double epsi_lat = epsi;*/
-
-          double y_lat = 0;
-          double psi_lat = 0;// TODO: steer is 0 - v_metersPerSec * old_steer_value * latency_milliSec / Lf;
-          double v_lat = 0;// v_metersPerSec + old_throttle_value * latency_milliSec;
-          double cte_lat = 0;//cte + v_metersPerSec * sin(epsi) * latency_milliSec;
-          double epsi_lat = epsi; // - v_metersPerSec * old_steer_value * latency_milliSec / Lf;
-
-          // state << x_lat, y_lat, psi_lat, v_lat, cte_lat, epsi_lat; // in Vehicle coordinates, the first three states are 0 (x,y and steering)
           state << x_lat, 0, 0, v_milesPerHour, cte, epsi;
 
           vector<double> mpc_x_vals;

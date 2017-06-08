@@ -242,10 +242,6 @@ void MPC::Solve(Eigen::VectorXd x0,
 
   auto cost = solution.obj_value;
   std::cout << "Cost " << cost << std::endl;
-  /*return {solution.x[x_start + 1],   solution.x[y_start + 1],
-          solution.x[psi_start + 1], solution.x[v_start + 1],
-          solution.x[cte_start + 1], solution.x[epsi_start + 1],
-          solution.x[delta_start],   solution.x[a_start]};*/
 
   for (int i=0; i <N-1; i++) { // somehow we get out of bounds issues if we iterate til N-1
     mpc_x_vals.push_back(     solution.x[x_start + i]       );
@@ -257,6 +253,7 @@ void MPC::Solve(Eigen::VectorXd x0,
     mpc_cte_vals.push_back(   solution.x[cte_start + 1 + i] );
     mpc_epsi_vals.push_back(  solution.x[epsi_start + 1 + i]);
   }
+
 }
 
 double polyeval(Eigen::VectorXd coeffs, double x) {
